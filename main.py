@@ -2,6 +2,13 @@ import os
 import email
 import imaplib
 import configparser
+import time
+
+
+dir = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+
+if not(os.path.isdir(dir)):
+    os.makedirs(os.path.join(dir))
 
 #문자열이 인코딩 정보 추출 후, 문자열, 인코딩 얻기
 def find_encoding_info(txt):
