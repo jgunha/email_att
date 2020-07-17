@@ -1,14 +1,25 @@
 import os
 import email
 import imaplib
-import configparser
 import time
+import requests
 
-
+#디렉토리 생성
 dir = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 if not(os.path.isdir(dir)):
     os.makedirs(os.path.join(dir))
+
+#파일 다운로드
+def download(url, file_name = None):
+    print(url)
+    if not file_name:
+        file_name = url.split('/')[-1]
+    '''with open(dir +'/' + file_name, "wb") as file:
+        response = requests.get(url)
+        file.write(response.content)'''
+    response = requests.get(url)
+    print(response.text)
 
 #문자열이 인코딩 정보 추출 후, 문자열, 인코딩 얻기
 def find_encoding_info(txt):
@@ -25,8 +36,8 @@ session.login('[mail address]','[password]')
 #받은편지함 선택
 session.select('Inbox')
 
-#받은 편지함 모든 메일 검색
-result, data = session.uid('search', None,'All')
+#특정 발신 이메일, 안읽은 메일만 검색
+result, data = session.uid('search', None, '(UNSEEN)', '(HEADER From "[certain email address]]")')
 
 #메일 나누기
 all_email = data[0].split()
@@ -37,8 +48,6 @@ for mail in all_email:
     raw_email_string = raw_email.decode('utf-8')
     email_message = email.message_from_string(raw_email_string)
 
-    if '[select email address]' not in email_message['From']:
-        continue
 
     #메일정보
     print('From:', email_message['From'])
@@ -51,7 +60,6 @@ for mail in all_email:
 
     message = ''
     print('[Message]')
-
 
     if email_message.is_multipart():
         for part in email_message.get_payload():
@@ -66,7 +74,7 @@ for mail in all_email:
             message = str(bytes, encode)
 
     print(message)
-
+    #download(message)
 
 session.close()
 session.logout()
