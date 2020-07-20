@@ -3,9 +3,7 @@ import email
 import imaplib
 import time
 import requests
-
 from GPSPhoto import gpsphoto
-
 
 #디렉토리 생성
 dir = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -19,12 +17,10 @@ if not(os.path.isfile(os.getcwd()+'\\'+dir+'\\'+'result.csv')):
     f.close()
 
 #파일 다운로드
-def download(url, file_name = None):
-    if not file_name:
-        file_name = url.split('/')[-1]
-    with open(os.getcwd() + '\\' + dir + '\\' + temp+'.txt' , "wb") as file:
-        response = requests.get(url)
-        file.write(response.content)
+def download(url):
+    r = requests.get(url, verify=False)
+    filename = r.url.split('/')[-1]
+    open(os.getcwd() + '\\'+dir+'\\'+filename,'wb').write(r.content)
 
     #exif 정보 가져오기
     #csv 파일 쓰기
