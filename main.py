@@ -4,6 +4,9 @@ import imaplib
 import time
 import requests
 from GPSPhoto import gpsphoto
+import csv
+import hashlib
+import urllib
 
 #디렉토리 생성
 dir = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -13,15 +16,31 @@ if not(os.path.isdir(dir)):
 
 #csv 파일 생성
 if not(os.path.isfile(os.getcwd()+'\\'+dir+'\\'+'result.csv')):
-    f = open(os.getcwd() + '\\'+dir+'\\'+'result.csv', 'w')
+    f = open(os.getcwd() + '\\'+dir+'\\'+'result.csv', 'w', encoding='utf-8',newline='')
+    wr = csv.writer(f)
+    wr.writerow(['Number','Data', 'Shortened URL', 'Full URL', 'FileName', 'Latitiude', 'Longitude', 'Altitude', 'MD5', 'SHA1'])
     f.close()
 
 #파일 다운로드
 def download(url):
     r = requests.get(url, verify=False)
-    filename = r.url.split('/')[-1]
+    filename = urllib.parse.unquote(r.url.split('/')[-1])
+    full_url = urllib.parse.unquote(r.url)
     open(os.getcwd() + '\\'+dir+'\\'+filename,'wb').write(r.content)
-
+    info = get_exif(os.getcwd()+'\\'+dir+'\\'+filename)
+    if 'Latitude' in info.keys():
+        lat = info['Latitude']
+    else:
+        lat = 'N/A'
+    if 'Longitude' in info.keys():
+        long = info['Longitude']
+    else:
+        long = 'N/A'
+    if 'Altitude' in info.keys():
+        alt = info['Altitude']
+    else:
+        alt = 'N/A'
+    return full_url, lat, long, alt, filename
     #exif 정보 가져오기
     #csv 파일 쓰기
 
@@ -33,6 +52,35 @@ def find_encoding_info(txt):
 #위도 경도 고도 정보 가져오기
 def get_exif(jpg_file):
     return gpsphoto.getGPSData(jpg_file)
+
+def get_hash(file_name):
+    BLOCKSIZE = 1024
+    hasher = hashlib.md5()
+    hasher2 = hashlib.sha1()
+    with open(os.getcwd()+'\\'+dir+'\\'+file_name, 'rb') as f:
+        buf = f.read(BLOCKSIZE)
+        while len(buf) > 0:
+            hasher.update(buf)
+            hasher2.update(buf)
+            buf = f.read(BLOCKSIZE)
+    f.close()
+    hash_md5 = hasher.hexdigest()
+    hash_sha1 = hasher2.hexdigest()
+    return hash_md5, hash_sha1
+#csv 작성
+def write_csv(url):
+    full_url, lat, long, alt, file_name = download(url)
+    #csv 작성
+    f = open(os.getcwd() + '\\'+dir+'\\'+'result.csv', 'r')
+    rd = csv.reader(f)
+    row_count = sum(1 for row in rd)
+    f.close()
+    f2 = open(os.getcwd() + '\\'+dir+'\\'+'result.csv', 'a', newline='')
+    wr = csv.writer(f2)
+    mail_date = time.strftime('%Y-%m-%d %H:%M', time.localtime(time.time()))
+    hash_md5, hash_sha1 = get_hash(file_name)
+    wr.writerow([row_count,mail_date ,url, full_url , file_name, lat, long, alt, hash_md5, hash_sha1])
+    pass
 
 #gmail imap 세션 설정
 session = imaplib.IMAP4_SSL('imap.gmail.com')
@@ -52,9 +100,6 @@ while(1):
     #메일 나누기
     all_email = data[0].split()
 
-    #사진 정보 가져오기
-    info = get_exif('test.jpg')
-    print(info)
 
     for mail in all_email:
         result, data = session.uid('fetch', mail,'(RFC822)')
@@ -87,8 +132,9 @@ while(1):
                 encode = email_message.get_content_charset()
                 message = str(bytes, encode)
 
+
         print(message)
-        download(message)
+        write_csv(message)
 
 session.close()
 session.logout()
