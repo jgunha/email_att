@@ -7,6 +7,7 @@ from GPSPhoto import gpsphoto
 import csv
 import hashlib
 import urllib
+import datetime
 
 #디렉토리 생성
 dir = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -21,6 +22,9 @@ if not(os.path.isfile(os.getcwd()+'\\'+dir+'\\'+'result.csv')):
     wr.writerow(['Number','Data', 'Shortened URL', 'Full URL', 'FileName', 'Latitiude', 'Longitude', 'Altitude', 'MD5', 'SHA1'])
     f.close()
 
+def find_url(message):
+    url = 'https://' + message.split('/')[-2] +'/'+ message.split('/')[-1].split('.')[0]
+    return url
 #파일 다운로드
 def download(url):
     r = requests.get(url, verify=False)
@@ -68,7 +72,7 @@ def get_hash(file_name):
     hash_sha1 = hasher2.hexdigest()
     return hash_md5, hash_sha1
 #csv 작성
-def write_csv(url):
+def write_csv(url, date):
     full_url, lat, long, alt, file_name = download(url)
     #csv 작성
     f = open(os.getcwd() + '\\'+dir+'\\'+'result.csv', 'r')
@@ -77,7 +81,7 @@ def write_csv(url):
     f.close()
     f2 = open(os.getcwd() + '\\'+dir+'\\'+'result.csv', 'a', newline='')
     wr = csv.writer(f2)
-    mail_date = time.strftime('%Y-%m-%d %H:%M', time.localtime(time.time()))
+    mail_date = datetime.datetime.strftime(date, '%Y-%m-%d %H:%M')
     hash_md5, hash_sha1 = get_hash(file_name)
     wr.writerow([row_count,mail_date ,url, full_url , file_name, lat, long, alt, hash_md5, hash_sha1])
     pass
@@ -132,9 +136,11 @@ while(1):
                 encode = email_message.get_content_charset()
                 message = str(bytes, encode)
 
-
-        print(message)
-        write_csv(message)
+        convert_date = datetime.datetime.strptime(email_message['Date'], '%a, %d %b %Y %X %z')
+        print(convert_date)
+        url = find_url(message)
+        print(url)
+        write_csv(url,convert_date)
 
 session.close()
 session.logout()
